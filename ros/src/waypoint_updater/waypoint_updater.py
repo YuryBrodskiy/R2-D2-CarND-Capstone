@@ -68,6 +68,7 @@ def test_calcRelativeCoordinate_identity():
     assert result.y == 0.0
     assert result.z == 0.0
 
+
 def test_calcRelativeCoordinate_180():
     result = wrap_calcRelativeCoordinate([0, 0, 0], [0, 0, 0, 1])
     print(result.x, result.y, result.z)
@@ -75,18 +76,22 @@ def test_calcRelativeCoordinate_180():
     assert result.y == 0.0
     assert result.z == 0.0
 
+
 def test_calcRelativeCoordinate_90():
     result = wrap_calcRelativeCoordinate([0, 0, 0], [0.707, 0, 0, 0.707])
     print(result.x, result.y, result.z)
     assert abs(result.x - 0.0)<0.001
     assert abs(result.y - -1.0)<0.001
     assert result.z == 0.0
+
+
 def test_calcRelativeCoordinate_1_90():
     result = wrap_calcRelativeCoordinate([1, 0, 0], [0.707, 0, 0, 0.707])
     print(result.x, result.y, result.z)
     assert abs(result.x - 0.0)<0.001
     assert abs(result.y - 0.0)<0.001
     assert result.z == 0.0
+
 
 def isInFront(cpose, wpose):
     return 0 < calcRelativeCoordinate(cpose, wpose.position).x
@@ -106,21 +111,23 @@ class WaypointUpdater(object):
         self.marker_publish = rospy.Publisher('visualization_marker_array', MarkerArray, queue_size=1)
         # TODO: Add other member variables you need below
 
-        rospy.spin()
-
+    def spin(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            self.publish_final_waypoints()
+            rate.sleep()
     def pose_cb(self, msg):
         # TODO: Implement
         self.current_pose = msg
-        self.publish_final_waypoints()
 
-    def pub_tf(self, waypoints, color, time=rospy.Time.from_sec(0.0)):
+
+    def pub_tf(self, waypoints, color, ns, time=rospy.Time.from_sec(0.0)):
         marker_array = MarkerArray()
-
         for index, waypoint in enumerate(waypoints):
-            marker =  Marker()
+            marker = Marker()
             marker.header.frame_id = "world"
             marker.header.stamp = time
-            marker.ns = "r2d2_namespace"
+            marker.ns = ns
             marker.id = index
             marker.type = Marker.SPHERE
             marker.action = Marker.ADD
@@ -135,13 +142,14 @@ class WaypointUpdater(object):
             marker.color.b = color[2]
             marker_array.markers.append(marker)
         self.marker_publish.publish(marker_array)
-        print("published")
+
 
     def waypoints_cb(self, lane):
         # TODO: Implement
         self.base_waypoints = lane.waypoints
-        self.pub_tf(lane.waypoints, [0.0, 1.0, 0.0])
-        self.publish_final_waypoints()
+        self.pub_tf(self.base_waypoints, [0.0, 1.0, 0.0], "r2d2_road")
+
+
 
     def publish_final_waypoints(self):
         if self.base_waypoints is not None and self.current_pose is not None:
@@ -154,11 +162,11 @@ class WaypointUpdater(object):
                 wpp = wp.pose.pose.position
                 cpp = self.current_pose.pose.position
                 return math.sqrt((cpp.x - wpp.x) ** 2 + (cpp.y - wpp.y) ** 2 + (cpp.z - wpp.z) ** 2)
-            dist_min = 300
+            dist_min = 30
             index = 0
             for i, waypoint in enumerate(self.base_waypoints):
                 dist_c = dist_current(waypoint)
-                if dist_c < 300 and isInFront(self.current_pose.pose, waypoint.pose.pose):
+                if dist_c < 30 and isInFront(self.current_pose.pose, waypoint.pose.pose):
                     if dist_c < dist_min:
                         index = i
                         dist_min = dist_c
@@ -175,7 +183,7 @@ class WaypointUpdater(object):
             print("Base ", len(self.base_waypoints))
             print("Final ", len(final_waypoints.waypoints))
             self.final_waypoints_pub.publish(final_waypoints)
-            self.pub_tf(final_waypoints.waypoints, [0.0, 0.0, 1.0], rospy.Time.now())
+            self.pub_tf(final_waypoints.waypoints, [0.0, 0.0, 1.0], "r2d2_final", rospy.Time.now())
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
@@ -202,6 +210,7 @@ class WaypointUpdater(object):
 
 if __name__ == '__main__':
     try:
-        WaypointUpdater()
+        wpu = WaypointUpdater()
+        wpu.spin()
     except rospy.ROSInterruptException:
         rospy.logerr('Could not start waypoint updater node.')
