@@ -90,6 +90,7 @@ class TrafficLightConverter(object):
         self.marker_publish.publish(marker_array)
 
     def publish_traffic_lights(self):
+        waypoint_i = -1
         if self.traffic_lights is not None and self.current_pose is not None and self.base_waypoints is not None:
             self.pub_tf(self.traffic_lights, "r2d2_traffic_lights_sim")
 
@@ -109,16 +110,19 @@ class TrafficLightConverter(object):
                     pass
             if index is not None:
                 upcomming_tl = self.traffic_lights[index]
+                self.pub_tf([upcomming_tl], "r2d2_traffic_lights_up")
 
                 def dist_current_tl(wp):
                     wpp = wp.pose.pose.position
                     cpp = upcomming_tl.pose.pose.position
                     return math.sqrt((cpp.x - wpp.x) ** 2 + (cpp.y - wpp.y) ** 2 + (cpp.z - wpp.z) ** 2)
 
-                waypoint = min(self.base_waypoints, key=dist_current_tl)
-                waypoint_i = self.base_waypoints.index(waypoint)
-                self.red_light_publish.publish(waypoint_i)
-                self.pub_tf([upcomming_tl], "r2d2_traffic_lights_up")
+                if upcomming_tl.state == 0:
+                    waypoint = min(self.base_waypoints, key=dist_current_tl)
+                    waypoint_i = self.base_waypoints.index(waypoint)
+
+        self.red_light_publish.publish(waypoint_i)
+
     #
     #
     # def get_waypoint_velocity(self, waypoint):
