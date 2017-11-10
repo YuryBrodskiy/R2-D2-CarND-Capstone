@@ -33,9 +33,11 @@ class Controller(object):
         accel = self.a_lpf.filt(accel)
 
         #Update sensitive to direction
+        throttle = 0
+        brake = 0
+        
         if accel > 0:
             throttle = accel
-            brake = 0
         else:
             if -accel < self.ps.brake_deadband:
                 accel = 0
