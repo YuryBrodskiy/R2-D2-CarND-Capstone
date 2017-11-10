@@ -100,7 +100,7 @@ class DBWNode(object):
                     self.reset = False
                 
                 #Get commands from twist controller
-                throttle, brake, steering = self.controller.control(self.twist_cmd, self.current_volocity, t_delta)
+                throttle, brake, steering = self.controller.control(self.twist_cmd, self.current_velocity, t_delta)
                 self.publish(throttle, brake, steering)
             else:
                 self.reset = True
