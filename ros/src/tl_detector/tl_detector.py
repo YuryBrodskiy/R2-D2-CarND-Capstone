@@ -38,7 +38,6 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-        self.tl_counter = 0
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -142,24 +141,11 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         # Get classification
-        # tl_state, debug_image = self.light_classifier.get_classification(
-        #     cv_image)
-        # self.debug_image_pub.publish(
-        #     self.bridge.cv2_to_imgmsg(debug_image, encoding="rgb8"))
+        tl_state, debug_image = self.light_classifier.get_classification(
+            cv_image)
+        self.debug_image_pub.publish(
+            self.bridge.cv2_to_imgmsg(debug_image, encoding="rgb8"))
 
-        # dummy
-        if self.tl_counter < 100:
-            tl_state = TrafficLight.RED
-            self.tl_counter += 1
-        elif self.tl_counter < 150:
-            tl_state = TrafficLight.YELLOW
-            self.tl_counter += 1
-        elif self.tl_counter < 200:
-            tl_state = TrafficLight.GREEN
-            self.tl_counter += 1
-        else:
-            tl_state = TrafficLight.GREEN
-            self.tl_counter = 0
         return tl_state
 
     def process_traffic_lights(self):
