@@ -6,11 +6,13 @@ put_text = lambda img, text, center, col: cv2.putText(img, text, center, cv2.FON
 
 
 class TLClassifier(object):
-    def __init__(self, traffic_light_id=10, min_conf_thresh=0.2,
+    def __init__(self, traffic_light_id=10, min_conf_thresh=0.08,
                  detection_ckpt_path='frozen_inference_graph.pb',
-                 classifier_ckpt_path='frozen_classifier.pb'):
+                 classifier_ckpt_path='frozen_classifier.pb',
+                 reduce_computation=True):
         self.traffic_light_id = traffic_light_id
         self.min_conf_thresh = min_conf_thresh
+        self.reduce_computation = reduce_computation
         detection_graph = tf.Graph()
         # load detection graph
         with detection_graph.as_default():
@@ -68,6 +70,13 @@ class TLClassifier(object):
         tl_indics = (classes == self.traffic_light_id)
         tl_boxes = boxes[tl_indics]
         tl_scores = scores[tl_indics]
+        if self.reduce_computation:
+            # use only the higest scoring box
+            if len(tl_scores) != 0:
+                highest_score = np.argmax(scores)
+                tl_boxes = tl_boxes[highest_score: highest_score + 1]
+                tl_scores = [tl_scores[highest_score]]
+
         tl_state = TrafficLight.UNKNOWN
         tl_text = 'Unknown'
         tl_color = (0, 0, 0)
