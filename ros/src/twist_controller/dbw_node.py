@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
@@ -95,14 +94,17 @@ class DBWNode(object):
             t_delta = t_1 - self.t_0
             self.t_0 = t_1
 
+	    #No zero division!
 	    t_delta = t_delta + 1e-6
 	    
+	    #Must have enough waypoints!
 	    waypoints_recieved = self.waypoints is not None
 	    if not waypoints_recieved:
 		continue
 
 	    if (len(self.waypoints) < 10):
 		continue
+
             if self.dbw_enabled and self.twist_cmd is not None and self.current_velocity is not None:
                 #Reset for manual/stop
                 if self.reset:
