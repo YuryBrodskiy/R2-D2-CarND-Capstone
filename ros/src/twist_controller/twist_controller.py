@@ -67,15 +67,15 @@ class Controller(object):
 
         #Throttle/brake prediction
 	accel = velocity_error / t_delta
-
-        #Update sensitive to direction
-        throttle = 0
-        brake = 0
+  
+  #Update sensitive to direction
+  throttle = 0
+  brake = 0
         
-        if accel > 0:
-	    accel = min(accel, self.ps.accel_limit)
-        else:
-            accel = max(accel, self.ps.decel_limit)
+  if accel > 0:
+      accel = min(accel, self.ps.accel_limit)
+  else:
+      accel = max(accel, self.ps.decel_limit)
 
 	torque = self.driverless_mass * accel * self.ps.wheel_radius
 
