@@ -3,6 +3,7 @@ import keras
 from keras.layers import *
 from keras.models import Model
 from sklearn.model_selection import train_test_split
+from skimage.transform import rotate, warp, resize
 from IPython import embed
 import cv2
 import os
@@ -63,9 +64,18 @@ def deepnn():
     return Model(input_layer, x)
 
 
+def random_shift(xy):
+    xy[:, 0] += np.random.uniform(-10,10)
+    xy[:, 1] += np.random.uniform(-20,20)
+    return xy
+
 def augment_image(img):
     if np.random.rand() > 0.5:
         img = np.fliplr(img)
+    if np.random.rand() > 0.5:
+        img = rotate(img, angle=np.random.uniform(-15,15))
+    if np.random.rand() > 0.5:
+        img = warp(img, random_shift)
     return img
 
 
