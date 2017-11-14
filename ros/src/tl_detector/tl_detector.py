@@ -53,7 +53,8 @@ class TLDetector(object):
         on the position of the light and the camera image to predict it.
         '''
         sub3 = rospy.Subscriber(
-            '/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb, queue_size=1)
+            '/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb,
+            queue_size=1)
         sub6 = rospy.Subscriber(
             '/image_color', Image, self.image_cb, queue_size=1,
             buff_size=2**24)

@@ -2,6 +2,7 @@ from styx_msgs.msg import TrafficLight
 import cv2
 import numpy as np
 import tensorflow as tf
+import rospy
 put_text = lambda img, text, center, col: cv2.putText(img, text, center, cv2.FONT_HERSHEY_DUPLEX, 2.0, col, 3, cv2.LINE_AA) # noqa
 
 
@@ -9,7 +10,8 @@ class TLClassifier(object):
     def __init__(self, traffic_light_id=10, min_conf_thresh=0.08,
                  detection_ckpt_path='frozen_inference_graph.pb',
                  classifier_ckpt_path='frozen_classifier.pb',
-                 reduce_computation=True):
+                 reduce_computation=True,
+                 gpu_memory_fraction=0.8):
         self.traffic_light_id = traffic_light_id
         self.min_conf_thresh = min_conf_thresh
         self.reduce_computation = reduce_computation
@@ -45,7 +47,12 @@ class TLClassifier(object):
             'tl_classifier_in:0')
         self.classifier_out = detection_graph.get_tensor_by_name(
             'tl_classifier_out/Softmax:0')
-        self.sess = tf.Session(graph=detection_graph)
+        # https://github.com/tensorflow/tensorflow/issues/5354
+        gpu_options = tf.GPUOptions(
+            per_process_gpu_memory_fraction=gpu_memory_fraction)
+        config = tf.ConfigProto(
+            gpu_options=gpu_options, log_device_placement=False)
+        self.sess = tf.Session(config=config, graph=detection_graph)
 
     def get_classification(self, image_bgr):
         """Determines the color of the traffic light in the image
@@ -63,9 +70,12 @@ class TLClassifier(object):
         pimg = np.expand_dims(image_rgb, axis=0)
         fetches = [
             self.boxes, self.scores, self.classes, self.num_detections]
+        tic = rospy.get_time()
         (boxes, scores, classes, num) = self.sess.run(
             fetches,
             feed_dict={self.image: pimg})
+        toc = rospy.get_time()
+        rospy.logwarn("Detection took %f secs" % (toc - tic))
         debug_image = image_rgb.copy()
         tl_indics = (classes == self.traffic_light_id)
         tl_boxes = boxes[tl_indics]
