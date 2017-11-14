@@ -38,6 +38,7 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+        self.tl_wp_mapping = {}
 
         sub1 = rospy.Subscriber(
             '/current_pose', PoseStamped, self.pose_cb, queue_size=1)
@@ -73,6 +74,8 @@ class TLDetector(object):
         if self.waypoints is None:
             self.waypoints = waypoints
         if len(self.waypoints.waypoints) != len(waypoints.waypoints):
+            rospy.logwarn("Map changed!")
+            self.tl_wp_mapping = {}
             self.waypoints = waypoints
 
     def traffic_cb(self, msg):
@@ -145,10 +148,16 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         # Get classification
+        tic = rospy.get_time()
         tl_state, debug_image = self.light_classifier.get_classification(
             cv_image)
+        toc = rospy.get_time()
+        rospy.logwarn("Detect / classify took %f secs" % (toc - tic))
+        tic = rospy.get_time()
         self.debug_image_pub.publish(
             self.bridge.cv2_to_imgmsg(debug_image, encoding="rgb8"))
+        toc = rospy.get_time()
+        rospy.logwarn("Publishing took %f secs" % (toc - tic))
 
         return tl_state
 
@@ -164,16 +173,21 @@ class TLDetector(object):
 
         """
         light = None
-
+        tic = rospy.get_time()
         # List of positions that correspond to the line to stop in front
         # of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
         if self.pose and self.waypoints:
             min_index_diff = INF
+            car_wp = self.get_closest_waypoint(
+                self.pose.pose.position.x, self.pose.pose.position.y)
             for tl_pos in stop_line_positions:
-                car_wp = self.get_closest_waypoint(
-                    self.pose.pose.position.x, self.pose.pose.position.y)
-                light_wp = self.get_closest_waypoint(tl_pos[0], tl_pos[1])
+                tl_key = str(tl_pos[0]) + str(tl_pos[1])
+                if tl_key not in self.tl_wp_mapping:
+                    light_wp = self.get_closest_waypoint(tl_pos[0], tl_pos[1])
+                    self.tl_wp_mapping[tl_key] = light_wp
+                else:
+                    light_wp = self.tl_wp_mapping[tl_key]
                 index_diff = light_wp - car_wp
                 # check that traffic light is in front
                 if index_diff >= -CAR_WP_LIGHT_WP_OFFSET \
@@ -183,7 +197,8 @@ class TLDetector(object):
                     min_index_diff = index_diff
                     # rospy.logwarn(
                     #     "Car wp: " + str(car_wp) + " light: " + str(light_wp))
-
+        toc = rospy.get_time()
+        rospy.logwarn("WP stuff took  %f secs" % (toc - tic))
         # TODO find the closest visible traffic light (if one exists)
         if light is not None:
             state = self.get_light_state(light)
