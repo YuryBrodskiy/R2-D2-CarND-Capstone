@@ -93,5 +93,4 @@ class Controller(object):
     
     #Reset for post-manual control/Stop
     def reset(self):
-        self.pid.reset()
 	self.pid_steer.reset()
