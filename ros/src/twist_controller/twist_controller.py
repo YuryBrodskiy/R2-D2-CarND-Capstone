@@ -73,9 +73,9 @@ class Controller(object):
   	brake = 0
         
   	if accel > 0:
-		accel = min(accel, self.ps.accel_limit)
+	    accel = min(accel, self.ps.accel_limit)
   	else:
-        	accel = max(accel, self.ps.decel_limit)
+            accel = max(accel, self.ps.decel_limit)
         torque = self.driverless_mass * accel * self.ps.wheel_radius
 
 	#accel/decel until preference or max torque
