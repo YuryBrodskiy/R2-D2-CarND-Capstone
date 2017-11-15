@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import rospy
 put_text = lambda img, text, center, col: cv2.putText(img, text, center, cv2.FONT_HERSHEY_DUPLEX, 2.0, col, 3, cv2.LINE_AA) # noqa
+TIME_EXECUTION = False
 
 
 class TLClassifier(object):
@@ -75,7 +76,8 @@ class TLClassifier(object):
             fetches,
             feed_dict={self.image: pimg})
         toc = rospy.get_time()
-        rospy.logwarn("Detection took %f secs" % (toc - tic))
+        if TIME_EXECUTION:
+            rospy.logwarn("Detection took %f secs" % (toc - tic))
         debug_image = image_rgb.copy()
         tl_indics = (classes == self.traffic_light_id)
         tl_boxes = boxes[tl_indics]

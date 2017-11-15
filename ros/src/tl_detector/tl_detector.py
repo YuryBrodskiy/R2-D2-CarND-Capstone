@@ -16,6 +16,7 @@ STATE_COUNT_THRESHOLD = 3
 TL_MAX_DIST = 50
 CAR_WP_LIGHT_WP_OFFSET = 20
 INF = 100000
+TIME_EXECUTION = False
 
 
 def dist_fn(x1, x2, y1, y2):
@@ -30,9 +31,6 @@ class TLDetector(object):
         self.waypoints = None
         self.camera_image = None
         self.lights = []
-        self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
-        self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
         self.last_state = TrafficLight.UNKNOWN
@@ -40,10 +38,13 @@ class TLDetector(object):
         self.state_count = 0
         self.tl_wp_mapping = {}
 
+        config_string = rospy.get_param("/traffic_light_config")
+        self.config = yaml.load(config_string)
+
         sub1 = rospy.Subscriber(
-            '/current_pose', PoseStamped, self.pose_cb, queue_size=1)
+            '/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber(
-            '/base_waypoints', Lane, self.waypoints_cb, queue_size=1)
+            '/base_waypoints', Lane, self.waypoints_cb)
         '''
         /vehicle/traffic_lights provides you with the location of the traffic
         light in 3D map space and helps you acquire an accurate ground truth
@@ -59,8 +60,11 @@ class TLDetector(object):
             '/image_color', Image, self.image_cb, queue_size=1,
             buff_size=2**24)
 
-        config_string = rospy.get_param("/traffic_light_config")
-        self.config = yaml.load(config_string)
+        self.bridge = CvBridge()
+        self.light_classifier = TLClassifier()
+        rospy.logwarn("TLClassifier initialized")
+        self.listener = tf.TransformListener()
+
 
         self.upcoming_red_light_pub = rospy.Publisher(
             '/traffic_waypoint', Int32, queue_size=1)
@@ -153,13 +157,16 @@ class TLDetector(object):
         tl_state, debug_image = self.light_classifier.get_classification(
             cv_image)
         toc = rospy.get_time()
-        rospy.logwarn("Detect / classify took %f secs" % (toc - tic))
+        if TIME_EXECUTION:
+            rospy.logwarn("Detect / classify took %f secs" % (toc - tic))
         tic = rospy.get_time()
         self.debug_image_pub.publish(
             self.bridge.cv2_to_imgmsg(debug_image, encoding="rgb8"))
         toc = rospy.get_time()
-        rospy.logwarn("Publishing took %f secs" % (toc - tic))
+        if TIME_EXECUTION:
+            rospy.logwarn("Publishing took %f secs" % (toc - tic))
 
+        tl_state = TrafficLight.GREEN
         return tl_state
 
     def process_traffic_lights(self):
@@ -199,12 +206,14 @@ class TLDetector(object):
                     # rospy.logwarn(
                     #     "Car wp: " + str(car_wp) + " light: " + str(light_wp))
         toc = rospy.get_time()
-        rospy.logwarn("WP stuff took  %f secs" % (toc - tic))
+        if TIME_EXECUTION:
+            rospy.logwarn("WP stuff took  %f secs" % (toc - tic))
         # TODO find the closest visible traffic light (if one exists)
         if light is not None:
             state = self.get_light_state(light)
             return light, state
 
+        self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
 
