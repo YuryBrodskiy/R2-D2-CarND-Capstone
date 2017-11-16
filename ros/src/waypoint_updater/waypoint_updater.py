@@ -120,7 +120,7 @@ class WaypointUpdater(object):
             end = min([index + LOOKAHEAD_WPS, len(self.base_waypoints)])
             if self.traffic_wp is not None \
                     and self.traffic_wp != -1 \
-                    and index <= self.traffic_wp <= end:
+                    and index < self.traffic_wp < end:
                 final_waypoints.waypoints = self.decelerate(self.base_waypoints[index:end], self.traffic_wp - index)
             else:
                 final_waypoints.waypoints = self.base_waypoints[index:end]
@@ -150,7 +150,7 @@ class WaypointUpdater(object):
         last = waypoints[stop_index]
         dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
         result = []
-        for wp in waypoints[:stop_index]:
+        for wp in waypoints:
             dist = dl(wp.pose.pose.position, last.pose.pose.position)
             vel = math.sqrt(2 * MAX_DECEL * dist)
             if vel < 1.:
