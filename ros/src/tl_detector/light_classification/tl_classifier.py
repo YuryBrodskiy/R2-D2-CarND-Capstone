@@ -12,7 +12,7 @@ class TLClassifier(object):
                  detection_ckpt_path='frozen_inference_graph.pb',
                  classifier_ckpt_path='frozen_classifier.pb',
                  reduce_computation=True,
-                 gpu_memory_fraction=0.8):
+                 gpu_memory_fraction=0.5):
         self.traffic_light_id = traffic_light_id
         self.min_conf_thresh = min_conf_thresh
         self.reduce_computation = reduce_computation

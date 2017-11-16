@@ -7,7 +7,7 @@ from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from light_classification.tl_classifier import TLClassifier
-import tf
+# import tf
 import cv2
 import math
 import yaml
@@ -37,7 +37,7 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
         self.tl_wp_mapping = {}
-
+        self.tl_initialized = False
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
 
@@ -62,14 +62,15 @@ class TLDetector(object):
 
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
+        self.tl_initialized = True
         rospy.logwarn("TLClassifier initialized")
-        self.listener = tf.TransformListener()
+        # self.listener = tf.TransformListener()
 
 
         self.upcoming_red_light_pub = rospy.Publisher(
-            '/traffic_waypoint', Int32, queue_size=1)
+            '/traffic_waypoint', Int32, queue_size=1, latch=True)
         self.debug_image_pub = rospy.Publisher(
-            '/debug_image', Image, queue_size=1)
+            '/debug_image', Image, queue_size=1, latch=True)
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -97,6 +98,8 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
+        if not self.tl_initialized:
+            return
         light_wp, state = self.process_traffic_lights()
 
         '''
@@ -211,6 +214,8 @@ class TLDetector(object):
         # TODO find the closest visible traffic light (if one exists)
         if light is not None:
             state = self.get_light_state(light)
+            rospy.logwarn("Light: %s, State: %s" % (light, state))
+
             return light, state
 
         self.waypoints = None
