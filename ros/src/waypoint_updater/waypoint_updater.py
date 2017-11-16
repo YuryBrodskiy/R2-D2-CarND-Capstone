@@ -9,6 +9,7 @@ import std_msgs.msg
 import math
 
 from utils import *
+
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
 
@@ -24,8 +25,9 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 1.0
+
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -33,34 +35,42 @@ class WaypointUpdater(object):
         self.base_waypoints = None
         self.current_pose = None
         self.traffic_wp = None
+
+        self.execution_rate_actual = 5    # [Hz]
+        self.execution_rate_measured = self.execution_rate_actual  # [Hz]
+        self.time_last = None
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', std_msgs.msg.Int32, self.traffic_cb)
-        # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
         self.marker_publish = rospy.Publisher('visualization_marker_array', MarkerArray, queue_size=1)
-        # TODO: Add other member variables you need below
 
     def spin(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(self.execution_rate_actual)
+        self.time_last = rospy.Time.now()
         while not rospy.is_shutdown():
             self.publish_final_waypoints()
             rate.sleep()
+            time_now = rospy.Time.now()
+            cycle_duration = time_now - self.time_last
+            execution_rate_inst = 1.0/(cycle_duration.to_nsec()*1e-9)
+            alpha = 0.1
+            self.execution_rate_measured = self.execution_rate_measured*(1.0-alpha) + alpha*execution_rate_inst
+            if self.execution_rate_actual - self.execution_rate_measured  > self.execution_rate_actual*0.1:
+                rospy.logwarn("Timing issues, waypoint updater spin frequency to high measured rate {}".format(self.execution_rate_measured))
+                rospy.logwarn("Inst{}".format(execution_rate_inst))
+            self.time_last = rospy.Time.now()
 
     def pose_cb(self, msg):
-        # TODO: Implement
         self.current_pose = msg
 
     def waypoints_cb(self, lane):
-        # TODO: Implement
         self.base_waypoints = lane.waypoints
         self.pub_tf(self.base_waypoints, [0.0, 1.0, 0.0], "r2d2_road")
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
         self.traffic_wp = msg.data
-
 
     def pub_tf(self, waypoints, color, ns, time=rospy.Time.from_sec(0.0)):
         marker_array = MarkerArray()
@@ -77,15 +87,15 @@ class WaypointUpdater(object):
             marker.scale.x = self.get_waypoint_velocity(waypoint)
             marker.scale.y = self.get_waypoint_velocity(waypoint)
             marker.scale.z = self.get_waypoint_velocity(waypoint)
-            marker.color.a = 0.5 # Don't' forget to set the alpha!
+            marker.color.a = 0.5  # Don't' forget to set the alpha!
             marker.color.r = color[0]
             marker.color.g = color[1]
             marker.color.b = color[2]
             marker_array.markers.append(marker)
         self.marker_publish.publish(marker_array)
 
-
     def publish_final_waypoints(self):
+
         if self.base_waypoints is not None and self.current_pose is not None:
             final_waypoints = Lane()
             final_waypoints.header = self.current_pose.header
@@ -96,6 +106,7 @@ class WaypointUpdater(object):
                 wpp = wp.pose.pose.position
                 cpp = self.current_pose.pose.position
                 return math.sqrt((cpp.x - wpp.x) ** 2 + (cpp.y - wpp.y) ** 2 + (cpp.z - wpp.z) ** 2)
+
             dist_min = 30
             index = 0
             for i, waypoint in enumerate(self.base_waypoints):
@@ -104,24 +115,17 @@ class WaypointUpdater(object):
                     if dist_c < dist_min:
                         index = i
                         dist_min = dist_c
-                       # final_waypoints.waypoints.append((i, waypoint))
                 else:
                     pass
-            end = min([index+LOOKAHEAD_WPS, len(self.base_waypoints)])
-            # final_waypoints.waypoints = sorted(final_waypoints.waypoints, key=dist_current)
-            base_waypoints_speed = copy.deepcopy(self.base_waypoints)
-            if self.traffic_wp is not None and self.traffic_wp != -1:
-                base_waypoints_speed = self.decelerate(base_waypoints_speed, self.traffic_wp)
-            final_waypoints.waypoints = base_waypoints_speed[index:end]
+            end = min([index + LOOKAHEAD_WPS, len(self.base_waypoints)])
+            if self.traffic_wp is not None \
+                    and self.traffic_wp != -1 \
+                    and index <= self.traffic_wp <= end:
+                final_waypoints.waypoints = self.decelerate(self.base_waypoints[index:end], self.traffic_wp - index)
+            else:
+                final_waypoints.waypoints = self.base_waypoints[index:end]
 
-            # sort by distnace
-            # self.pub_tf(final_waypoints.waypoints[:LOOKAHEAD_WPS])
-            #print("Got heres")
-            #vim rospy.logwarn("works")
-            print("Base ", len(self.base_waypoints))
-            print("Final ", len(final_waypoints.waypoints))
             self.final_waypoints_pub.publish(final_waypoints)
-            #self.pub_tf(base_waypoints_speed, [0.0, 1.0, 0.0], "r2d2_road", rospy.Time.now())
             self.pub_tf(final_waypoints.waypoints, [0.0, 0.0, 1.0], "r2d2_final", rospy.Time.now())
 
     def obstacle_cb(self, msg):
@@ -136,26 +140,26 @@ class WaypointUpdater(object):
 
     def distance(self, waypoints, wp1, wp2):
         dist = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
-        for i in range(wp1, wp2+1):
+        dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
+        for i in range(wp1, wp2 + 1):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist
 
     def decelerate(self, waypoints, stop_index):
         last = waypoints[stop_index]
-        last.twist.twist.linear.x = 0.
         dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
-        begin = max([0, 300-stop_index])
-        for wp in waypoints[begin:stop_index]:
+        result = []
+        for wp in waypoints[:stop_index]:
             dist = dl(wp.pose.pose.position, last.pose.pose.position)
             vel = math.sqrt(2 * MAX_DECEL * dist)
             if vel < 1.:
                 vel = 0.
-            wp.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-        waypoints[stop_index].twist.twist.linear.x = 0
-        waypoints[stop_index+1].twist.twist.linear.x = 0
-        return waypoints
+            vel = min(vel, wp.twist.twist.linear.x)
+            final_waypoint = copy.deepcopy(wp)
+            final_waypoint.twist.twist.linear.x = vel
+            result.append(final_waypoint)
+        return result
 
 
 if __name__ == '__main__':
