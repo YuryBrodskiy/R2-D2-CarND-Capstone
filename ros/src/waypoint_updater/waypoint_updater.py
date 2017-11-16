@@ -122,7 +122,7 @@ class WaypointUpdater(object):
             #    else:
             #        pass
             ##New loop - loops forward from previous waypoints unless there is no index orientation (first run, or can be utilized in reset)
-            for i in len(self.base_waypoints):
+            for i in range(len(self.base_waypoints)):
                 refIndex = (i + self.previous_reference_wp) % len(self.base_waypoints)
                 if isInFront(self.current_pose.pose, self.base_waypoints[refIndex].pose.pose):
                     if self.waypoint_index_oriented:
