@@ -35,6 +35,8 @@ class WaypointUpdater(object):
         self.base_waypoints = None
         self.current_pose = None
         self.traffic_wp = None
+        self.previous_reference_wp = 0
+        self.waypoint_index_oriented = False
 
         self.execution_rate_actual = 5    # [Hz]
         self.execution_rate_measured = self.execution_rate_actual  # [Hz]
@@ -109,14 +111,33 @@ class WaypointUpdater(object):
 
             dist_min = 30
             index = 0
-            for i, waypoint in enumerate(self.base_waypoints):
-                dist_c = dist_current(waypoint)
-                if dist_c < 30 and isInFront(self.current_pose.pose, waypoint.pose.pose):
-                    if dist_c < dist_min:
-                        index = i
-                        dist_min = dist_c
-                else:
-                    pass
+            wp_found = False
+            ##Old loop - loops through entire list of base waypoints
+            #for i, waypoint in enumerate(self.base_waypoints):
+            #    dist_c = dist_current(waypoint)
+            #    if dist_c < 30 and isInFront(self.current_pose.pose, waypoint.pose.pose):
+            #        if dist_c < dist_min:
+            #            index = i
+            #            dist_min = dist_c
+            #    else:
+            #        pass
+            ##New loop - loops forward from previous waypoints unless there is no index orientation (first run, or can be utilized in reset)
+            for i in len(self.base_waypoints):
+                refIndex = i + self.previous_reference_wp
+                if isInFront(self.current_pose.pose, self.base_waypoints[refIndex].pose.pose) and (refIndex < len(self.base_waypoints)):
+                    if self.waypoint_index_oriented:
+                        index = refIndex
+                        self.previous_reference_wp = refIndex
+                        wp_found = True
+                        break
+                    else:
+                        dist_c = dist_current(self.base_waypoints[refIndex])
+                        if dist_c < dist_min:
+                            index = refIndex
+                            dist_min = dist_c
+                            wp_found = True
+            if wp_found:
+                self.waypoint_index_oriented = True
             end = min([index + LOOKAHEAD_WPS, len(self.base_waypoints)])
             if self.traffic_wp is not None \
                     and self.traffic_wp != -1 \
