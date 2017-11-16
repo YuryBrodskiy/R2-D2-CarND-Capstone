@@ -13,7 +13,7 @@ import math
 import yaml
 
 STATE_COUNT_THRESHOLD = 3
-TL_MAX_DIST = 50
+TL_MAX_DIST = 100
 CAR_WP_LIGHT_WP_OFFSET = 20
 INF = 100000
 TIME_EXECUTION = False
@@ -30,6 +30,7 @@ class TLDetector(object):
         self.pose = None
         self.waypoints = None
         self.camera_image = None
+        self.has_image = False
         self.lights = []
 
         self.state = TrafficLight.UNKNOWN
@@ -66,12 +67,16 @@ class TLDetector(object):
         rospy.logwarn("TLClassifier initialized")
         # self.listener = tf.TransformListener()
 
-
         self.upcoming_red_light_pub = rospy.Publisher(
             '/traffic_waypoint', Int32, queue_size=1, latch=True)
         self.debug_image_pub = rospy.Publisher(
             '/debug_image', Image, queue_size=1, latch=True)
-        rospy.spin()
+
+    def spin(self):
+        rate = rospy.Rate(5)
+        while not rospy.is_shutdown():
+            rate.sleep()
+            self.publish_tl()
 
     def pose_cb(self, msg):
         self.pose = msg
@@ -98,7 +103,10 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
+
+    def publish_tl(self):
         if not self.tl_initialized:
+            rospy.logwarn("Waiting for TLClassifier")
             return
         light_wp, state = self.process_traffic_lights()
 
@@ -150,26 +158,19 @@ class TLDetector(object):
 
         """
         if not self.has_image:
+            rospy.logwarn("TLDetector: No image")
             self.prev_light_loc = None
             return False
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         # Get classification
-        tic = rospy.get_time()
         tl_state, debug_image = self.light_classifier.get_classification(
             cv_image)
-        toc = rospy.get_time()
-        if TIME_EXECUTION:
-            rospy.logwarn("Detect / classify took %f secs" % (toc - tic))
-        tic = rospy.get_time()
         self.debug_image_pub.publish(
             self.bridge.cv2_to_imgmsg(debug_image, encoding="rgb8"))
-        toc = rospy.get_time()
-        if TIME_EXECUTION:
-            rospy.logwarn("Publishing took %f secs" % (toc - tic))
 
-        tl_state = TrafficLight.GREEN
+        # tl_state = TrafficLight.GREEN
         return tl_state
 
     def process_traffic_lights(self):
@@ -184,7 +185,6 @@ class TLDetector(object):
 
         """
         light = None
-        tic = rospy.get_time()
         # List of positions that correspond to the line to stop in front
         # of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
@@ -206,24 +206,24 @@ class TLDetector(object):
                    and index_diff < TL_MAX_DIST:
                     light = light_wp
                     min_index_diff = index_diff
-                    # rospy.logwarn(
-                    #     "Car wp: " + str(car_wp) + " light: " + str(light_wp))
-        toc = rospy.get_time()
-        if TIME_EXECUTION:
-            rospy.logwarn("WP stuff took  %f secs" % (toc - tic))
+        elif self.pose is None:
+            rospy.logwarn_throttle(2, "TLDetector: No pose")
+        elif self.waypoints is None:
+            rospy.logwarn_throttle(2, "TLDetector: No wps")
+
         # TODO find the closest visible traffic light (if one exists)
         if light is not None:
             state = self.get_light_state(light)
-            rospy.logwarn("Light: %s, State: %s" % (light, state))
-
             return light, state
 
-        self.waypoints = None
+        # self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
 
 if __name__ == '__main__':
     try:
-        TLDetector()
+        traffic_light_detector = TLDetector()
+        traffic_light_detector.spin()
+
     except rospy.ROSInterruptException:
         rospy.logerr('Could not start traffic node.')
