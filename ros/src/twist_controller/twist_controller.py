@@ -43,6 +43,9 @@ class Controller(object):
         self.ps = ps
 	self.driverless_mass = self.ps.vehicle_mass + self.ps.fuel_capacity * GAS_DENSITY
 	self.pid_steer = PID(.5, .01, .25, -ps.max_steer_angle, ps.max_steer_angle)
+	self.last_cte = 0
+	self.p1 = .1
+	self.p2 = .2
         
 	#Removed LPF - legacy
 	#self.s_lpf = LowPassFilter(3, .5)
@@ -50,9 +53,12 @@ class Controller(object):
 
     def control(self, twist_cmd, c_v, t_delta, pose, waypoints):
 	cte = get_cte(pose, waypoints)
+	cte_d = (cte - self.last_cte) / t_delta
+	self.last_cte = cte
 
 	#Velocity update for accel/steer
         l_v = abs(twist_cmd.twist.linear.x)
+	l_v = l_v / (1 + self.p1 * cte * cte + self.p2 * cte_d * cte_d) 
         a_v = twist_cmd.twist.angular.z
         velocity_error = l_v - c_v.linear.x
         
@@ -61,7 +67,7 @@ class Controller(object):
         #steer = self.s_lpf.filt(steer)
         
 	#Steer correction
-	steer_cor = self.pid_steer.step(cte, t_delta)
+	steer_cor = self.pid_steer.step(cte, t_delta, steer, self.ps.max_steer_angle)
 	#steer = self.s_lpf.filt(steer_cor + steer)
 	steer = steer_cor + steer
 
@@ -94,3 +100,4 @@ class Controller(object):
     #Reset for post-manual control/Stop
     def reset(self):
 	self.pid_steer.reset()
+
