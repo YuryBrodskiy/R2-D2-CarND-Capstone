@@ -17,10 +17,17 @@ class PID(object):
         self.int_val = 0.0
         self.last_int_val = 0.0
 
-    def step(self, error, sample_time):
+    def step(self, error, sample_time, steer_goal, max_steer):
+        self.min = -max_steer - steer_goal
+        self.max = max_steer - steer_goal
         self.last_int_val = self.int_val
 
         integral = self.int_val + error * sample_time;
+        kintegral = self.ki * integral
+        if (kintegral > self.max):
+            integral = self.max / self.ki
+        if (kintegral < self.min):
+            integral = self.min / self.ki
         derivative = (error - self.last_error) / sample_time;
 
         y = self.kp * error + self.ki * self.int_val + self.kd * derivative;
@@ -30,8 +37,7 @@ class PID(object):
             val = self.max
         elif val < self.min:
             val = self.min
-        else:
-            self.int_val = integral
+        self.int_val = integral
         self.last_error = error
 
-        return val
+        return val, derivative
