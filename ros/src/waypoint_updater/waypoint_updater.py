@@ -27,6 +27,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 1.0
+NUM_WPS_BEFORE_TL = 30
 
 
 class WaypointUpdater(object):
@@ -72,7 +73,7 @@ class WaypointUpdater(object):
         self.pub_tf(self.base_waypoints, [0.0, 1.0, 0.0], "r2d2_road")
 
     def traffic_cb(self, msg):
-        self.traffic_wp = msg.data
+        self.traffic_wp = msg.data - NUM_WPS_BEFORE_TL
 
     def pub_tf(self, waypoints, color, ns, time=rospy.Time.from_sec(0.0)):
         marker_array = MarkerArray()
@@ -141,8 +142,8 @@ class WaypointUpdater(object):
             end = min([index + LOOKAHEAD_WPS, len(self.base_waypoints)])
             if self.traffic_wp is not None \
                     and self.traffic_wp != -1 \
-                    and index < self.traffic_wp < end:
-                final_waypoints.waypoints = self.decelerate(self.base_waypoints[index:end], self.traffic_wp - index)
+                    and max([0, index-NUM_WPS_BEFORE_TL]) < self.traffic_wp < end:
+                final_waypoints.waypoints = self.decelerate(self.base_waypoints[index:end], max([0,self.traffic_wp - index]))
             else:
                 final_waypoints.waypoints = self.base_waypoints[index:end]
 
@@ -171,10 +172,10 @@ class WaypointUpdater(object):
         last = waypoints[stop_index]
         dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
         result = []
-        for wp in waypoints:
+        for index, wp in enumerate(waypoints):
             dist = dl(wp.pose.pose.position, last.pose.pose.position)
             vel = math.sqrt(2 * MAX_DECEL * dist)
-            if vel < 1.:
+            if vel < 1. or index > stop_index:
                 vel = 0.
             vel = min(vel, wp.twist.twist.linear.x)
             final_waypoint = copy.deepcopy(wp)
