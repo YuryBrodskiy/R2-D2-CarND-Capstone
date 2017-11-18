@@ -134,10 +134,12 @@ class WaypointUpdater(object):
                         dist_min = dist_c
 
             front_wp_counter = 0
+            len_wps = len(self.base_waypoints)
             while front_wp_counter < 15:
                 if not isInFrontV2(self.current_pose.pose,
                                    self.base_waypoints[index].pose.pose):
                     index += 1
+                    index = index % len_wps
                     front_wp_counter += 1
                 else:
                     break
