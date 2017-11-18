@@ -6,6 +6,7 @@ from styx_msgs.msg import TrafficLightArray, TrafficLight
 from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+import tf as tft
 from light_classification.tl_classifier import TLClassifier
 # import tf
 import cv2
@@ -14,9 +15,22 @@ import yaml
 
 STATE_COUNT_THRESHOLD = 3
 TL_MAX_DIST = 100
-CAR_WP_LIGHT_WP_OFFSET = 20
+STOP_TL_OFFSET = 26
 INF = 100000
 TIME_EXECUTION = False
+
+
+def isInFront(pose, wp_pose):
+    heading = math.atan2(wp_pose.position.y - pose.position.y,
+                         wp_pose.position.x - pose.position.x)
+    quaternion = (pose.orientation.x,
+                  pose.orientation.y,
+                  pose.orientation.z,
+                  pose.orientation.w)
+    pitch, roll, yaw = tft.transformations.euler_from_quaternion(
+        quaternion)
+    in_front = abs(heading - yaw) < math.pi / 4
+    return in_front
 
 
 def dist_fn(x1, x2, y1, y2):
@@ -185,6 +199,7 @@ class TLDetector(object):
 
         """
         light = None
+        car_wp = None
         # List of positions that correspond to the line to stop in front
         # of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
@@ -201,11 +216,14 @@ class TLDetector(object):
                     light_wp = self.tl_wp_mapping[tl_key]
                 index_diff = light_wp - car_wp
                 # check that traffic light is in front
-                if index_diff >= -CAR_WP_LIGHT_WP_OFFSET \
+                if index_diff >= 0 \
                    and index_diff < min_index_diff \
-                   and index_diff < TL_MAX_DIST:
-                    light = light_wp
-                    min_index_diff = index_diff
+                   and isInFront(
+                       self.pose.pose,
+                       self.waypoints.waypoints[light_wp].pose.pose):
+                        light = light_wp
+                        min_index_diff = index_diff
+
         elif self.pose is None:
             rospy.logwarn_throttle(2, "TLDetector: No pose")
         elif self.waypoints is None:
@@ -214,7 +232,7 @@ class TLDetector(object):
         # TODO find the closest visible traffic light (if one exists)
         if light is not None:
             state = self.get_light_state(light)
-            return light, state
+            return light + STOP_TL_OFFSET, state
 
         # self.waypoints = None
         return -1, TrafficLight.UNKNOWN

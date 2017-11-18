@@ -7,6 +7,7 @@ from styx_msgs.msg import Lane
 from visualization_msgs.msg import Marker, MarkerArray
 import std_msgs.msg
 import math
+import tf as tft
 
 from utils import *
 
@@ -28,6 +29,20 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 1.0
 NUM_WPS_BEFORE_TL = 30
+TL_MIN_DIST = 30
+
+
+def isInFrontV2(pose, wp_pose):
+    heading = math.atan2(wp_pose.position.y - pose.position.y,
+                         wp_pose.position.x - pose.position.x)
+    quaternion = (pose.orientation.x,
+                  pose.orientation.y,
+                  pose.orientation.z,
+                  pose.orientation.w)
+    pitch, roll, yaw = tft.transformations.euler_from_quaternion(
+        quaternion)
+    in_front = abs(heading - yaw) < math.pi / 4
+    return in_front
 
 
 class WaypointUpdater(object):
@@ -110,35 +125,24 @@ class WaypointUpdater(object):
                 cpp = self.current_pose.pose.position
                 return math.sqrt((cpp.x - wpp.x) ** 2 + (cpp.y - wpp.y) ** 2 + (cpp.z - wpp.z) ** 2)
 
-            dist_min = 30
+            dist_min = 10000
             index = 0
-            wp_found = False
-            ##Old loop - loops through entire list of base waypoints
-            #for i, waypoint in enumerate(self.base_waypoints):
-            #    dist_c = dist_current(waypoint)
-            #    if dist_c < 30 and isInFront(self.current_pose.pose, waypoint.pose.pose):
-            #        if dist_c < dist_min:
-            #            index = i
-            #            dist_min = dist_c
-            #    else:
-            #        pass
-            ##New loop - loops forward from previous waypoints unless there is no index orientation (first run, or can be utilized in reset)
-            for i in range(len(self.base_waypoints)):
-                refIndex = (i + self.previous_reference_wp) % len(self.base_waypoints)
-                if isInFront(self.current_pose.pose, self.base_waypoints[refIndex].pose.pose):
-                    if self.waypoint_index_oriented:
-                        index = refIndex
-                        self.previous_reference_wp = refIndex
-                        wp_found = True
-                        break
-                    else:
-                        dist_c = dist_current(self.base_waypoints[refIndex])
-                        if dist_c < dist_min:
-                            index = refIndex
-                            dist_min = dist_c
-                            wp_found = True
-            if wp_found:
-                self.waypoint_index_oriented = True
+            for i, waypoint in enumerate(self.base_waypoints):
+                    dist_c = dist_current(waypoint)
+                    if dist_c < dist_min and dist_c < TL_MIN_DIST:
+                        index = i
+                        dist_min = dist_c
+
+            front_wp_counter = 0
+            while front_wp_counter < 15:
+                if not isInFrontV2(self.current_pose.pose,
+                                   self.base_waypoints[index].pose.pose):
+                    index += 1
+                    front_wp_counter += 1
+                else:
+                    break
+            if front_wp_counter >= 10:
+                rospy.logwarn("WaypointUpdater: Large distance to wp: %d" % (front_wp_counter))  # noqa
             end = min([index + LOOKAHEAD_WPS, len(self.base_waypoints)])
             if self.traffic_wp is not None \
                     and self.traffic_wp != -1 \
