@@ -42,10 +42,10 @@ class Controller(object):
         #Init params, PID, and filters
         self.ps = ps
 	self.driverless_mass = self.ps.vehicle_mass + self.ps.fuel_capacity * GAS_DENSITY
-	self.pid_steer = PID(.5, .01, .25, -ps.max_steer_angle, ps.max_steer_angle)
+	self.pid_steer = PID(.5, .0025, .25, -ps.max_steer_angle, ps.max_steer_angle)
 	self.last_cte = 0
-	self.p1 = .1
-	self.p2 = .2
+	self.p1 = .0005
+	self.p2 = .0005
         
 	#Removed LPF - legacy
 	#self.s_lpf = LowPassFilter(3, .5)
