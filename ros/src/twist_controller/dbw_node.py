@@ -102,7 +102,7 @@ class DBWNode(object):
 	    if not waypoints_recieved:
 		continue
 
-	    if (len(self.waypoints) < 10):
+	    if (len(self.waypoints) < 3):
 		continue
 
             if self.dbw_enabled and self.twist_cmd is not None and self.current_velocity is not None:
@@ -113,10 +113,11 @@ class DBWNode(object):
                 
                 #Get commands from twist controller
                 throttle, brake, steering = self.controller.control(self.twist_cmd, self.current_velocity, t_delta, self.pose, self.waypoints)
-                self.publish(throttle, brake, steering)
             else:
                 self.reset = True
-            rate.sleep()
+		throttle, brake, steering = 0.0, 0.0, 0.0
+            self.publish(throttle, brake, steering)
+	    rate.sleep()
 
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()
