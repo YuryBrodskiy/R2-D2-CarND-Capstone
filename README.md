@@ -3,8 +3,11 @@ This is the project repo for the R2-D2 Team's final project of the Udacity Self-
 ## R2-D2 Team Members:
 
 Yury Brodskiy - yurashkaus@gmail.com - Fastest Waypoint Updater This Side of the Mississippi
+
 Robroo Somkiadcharoen - robroo.pc@gmail.com - <b>Classified Information</b>
+
 Steffen Eberbach - steffenebe@gmail.com - Quality Control and Multi-tasking Wizard
+
 Andrew Hogan - andrew@hogangaming.com - Control Freak
 
 ### Native Installation
