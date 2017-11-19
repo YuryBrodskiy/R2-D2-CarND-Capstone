@@ -8,7 +8,7 @@ Robroo Somkiadcharoen - robroo.pc@gmail.com - <b>Classified Information</b>
 
 Steffen Eberbach - steffenebe@gmail.com - Quality Control and Multi-tasking Wizard
 
-Andrew Hogan - andrew@hogangaming.com - Control Freak
+Andrew Hogan - andrew@hogangaming.com - Twist Control Freak
 
 ### Native Installation
 
