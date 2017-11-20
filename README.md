@@ -6,7 +6,6 @@ This is the project repo for the R2-D2 Team's final project of the Udacity Self-
 * Robroo Somkiadcharoen - robroo.pc@gmail.com - Real-time Traffic Light Classifier Draft Model & Graph Optimization
 * Steffen Eberbach - steffenebe@gmail.com - SSD for real-time traffic light detection & classification
 * Andrew Hogan - andrew@hogangaming.com - Twist Controller (Yaw+PID Steering and Throttle/Brake Regularization)
-* David Hayes -  davhayes@cisco.com - System testing and verification 
 
 ### Native Installation
 
