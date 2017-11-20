@@ -2,13 +2,13 @@ This is the project repo for the R2-D2 Team's final project of the Udacity Self-
 
 ## R2-D2 Team Members:
 
-Yury Brodskiy - yurashkaus@gmail.com - Fastest Waypoint Updater This Side of the Mississippi
+Yury Brodskiy - yurashkaus@gmail.com - Waypoint Updater (Location and Velocity Goals)
 
 Robroo Somkiadcharoen - robroo.pc@gmail.com - Real-time Traffic Light Classifier Draft Model & Graph Optimization
 
 Steffen Eberbach - steffenebe@gmail.com - SSD for real-time traffic light detection & classification
 
-Andrew Hogan - andrew@hogangaming.com - Twist Control Freak
+Andrew Hogan - andrew@hogangaming.com - Twist Controller (Yaw+PID Steering and Throttle/Brake Regularization)
 
 ### Native Installation
 
