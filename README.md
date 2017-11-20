@@ -4,7 +4,7 @@ This is the project repo for the R2-D2 Team's final project of the Udacity Self-
 
 Yury Brodskiy - yurashkaus@gmail.com - Fastest Waypoint Updater This Side of the Mississippi
 
-Robroo Somkiadcharoen - robroo.pc@gmail.com - Classified Information
+Robroo Somkiadcharoen - robroo.pc@gmail.com - Real-time Traffic Light Classifier Draft Model & Graph Optimization
 
 Steffen Eberbach - steffenebe@gmail.com - SSD for real-time traffic light detection & classification
 
