@@ -4,9 +4,9 @@ This is the project repo for the R2-D2 Team's final project of the Udacity Self-
 
 Yury Brodskiy - yurashkaus@gmail.com - Fastest Waypoint Updater This Side of the Mississippi
 
-Robroo Somkiadcharoen - robroo.pc@gmail.com - <b>Classified Information</b>
+Robroo Somkiadcharoen - robroo.pc@gmail.com - Classified Information
 
-Steffen Eberbach - steffenebe@gmail.com - Quality Control and Multi-tasking Wizard
+Steffen Eberbach - steffenebe@gmail.com - SSD for real-time traffic light detection & classification
 
 Andrew Hogan - andrew@hogangaming.com - Twist Control Freak
 
