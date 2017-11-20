@@ -16,21 +16,7 @@ import yaml
 STATE_COUNT_THRESHOLD = 3
 TL_MAX_DIST = 100
 STOP_TL_OFFSET = 26
-INF = 100000
 TIME_EXECUTION = False
-
-
-def isInFront(pose, wp_pose):
-    heading = math.atan2(wp_pose.position.y - pose.position.y,
-                         wp_pose.position.x - pose.position.x)
-    quaternion = (pose.orientation.x,
-                  pose.orientation.y,
-                  pose.orientation.z,
-                  pose.orientation.w)
-    pitch, roll, yaw = tft.transformations.euler_from_quaternion(
-        quaternion)
-    in_front = abs(heading - yaw) < math.pi / 4
-    return in_front
 
 
 def dist_fn(x1, x2, y1, y2):
@@ -51,7 +37,7 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-        self.tl_wp_mapping = {}
+        self.stop_wp_mapping = {}
         self.tl_initialized = False
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -100,7 +86,7 @@ class TLDetector(object):
             self.waypoints = waypoints
         if len(self.waypoints.waypoints) != len(waypoints.waypoints):
             rospy.logwarn("Map changed!")
-            self.tl_wp_mapping = {}
+            self.stop_wp_mapping = {}
             self.waypoints = waypoints
 
     def traffic_cb(self, msg):
@@ -204,24 +190,25 @@ class TLDetector(object):
         # of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
         if self.pose and self.waypoints:
-            min_index_diff = INF
+            min_index_diff = 100000
             car_wp = self.get_closest_waypoint(
                 self.pose.pose.position.x, self.pose.pose.position.y)
             for tl_pos in stop_line_positions:
                 tl_key = str(tl_pos[0]) + str(tl_pos[1])
-                if tl_key not in self.tl_wp_mapping:
-                    light_wp = self.get_closest_waypoint(tl_pos[0], tl_pos[1])
-                    self.tl_wp_mapping[tl_key] = light_wp
+                if tl_key not in self.stop_wp_mapping:
+                    stop_wp = self.get_closest_waypoint(tl_pos[0], tl_pos[1])
+                    self.stop_wp_mapping[tl_key] = stop_wp
                 else:
-                    light_wp = self.tl_wp_mapping[tl_key]
-                index_diff = light_wp - car_wp
-                # check that traffic light is in front
-                if index_diff >= 0 \
-                   and index_diff < min_index_diff \
-                   and isInFront(
-                       self.pose.pose,
-                       self.waypoints.waypoints[light_wp].pose.pose):
-                        light = light_wp
+                    stop_wp = self.stop_wp_mapping[tl_key]
+                tl_wp_index = min(
+                    stop_wp + STOP_TL_OFFSET,
+                    len(self.waypoints.waypoints) - 1)
+                index_diff = tl_wp_index - car_wp
+
+                # check that traffic light is in front: index_diff >= 0
+                if index_diff < min_index_diff \
+                   and index_diff >= 0:
+                        light = tl_wp_index
                         min_index_diff = index_diff
 
         elif self.pose is None:
@@ -232,7 +219,7 @@ class TLDetector(object):
         # TODO find the closest visible traffic light (if one exists)
         if light is not None:
             state = self.get_light_state(light)
-            return light + STOP_TL_OFFSET, state
+            return light, state
 
         # self.waypoints = None
         return -1, TrafficLight.UNKNOWN
