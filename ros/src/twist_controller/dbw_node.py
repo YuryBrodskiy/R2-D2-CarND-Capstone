@@ -29,6 +29,8 @@ Once you have the proposed throttle, brake, and steer values, publish it on the 
 that we have created in the `__init__` function.
 
 '''
+
+
 class Param_State(object):
     def __init__(self):
         self.vehicle_mass = None
@@ -41,6 +43,7 @@ class Param_State(object):
         self.steer_ratio = None
         self.max_lat_accel = None
         self.max_steer_angle = None
+
 
 class DBWNode(object):
     def __init__(self):
@@ -72,21 +75,20 @@ class DBWNode(object):
         self.reset = True
         self.twist_cmd = None
         self.current_velocity = None
-	self.pose = None
-	self.waypoints = None
+        self.pose = None
+        self.waypoints = None
         self.controller = Controller(ps)
 
-
-        #Subscribe to needed topics
+        # Subscribe to needed topics
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb, queue_size=1)
         rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb, queue_size=1)
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb, queue_size=1)
-	rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
-	rospy.Subscriber('/final_waypoints', Lane, self.waypoints_cb, queue_size=1)
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
+        rospy.Subscriber('/final_waypoints', Lane, self.waypoints_cb, queue_size=1)
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(10) # 50Hz
+        rate = rospy.Rate(10)  # 50Hz
         while not rospy.is_shutdown():
             # Get predicted throttle, brake, and steering using `twist_controller`
             # You should only publish the control commands if dbw is enabled
@@ -94,30 +96,31 @@ class DBWNode(object):
             t_delta = t_1 - self.t_0
             self.t_0 = t_1
 
-	    #No zero division!
-	    t_delta = t_delta + 1e-6
-	    
-	    #Must have enough waypoints!
-	    waypoints_recieved = self.waypoints is not None
-	    if not waypoints_recieved:
-		continue
+            # No zero division!
+            t_delta = t_delta + 1e-6
 
-	    if (len(self.waypoints) < 3):
-		continue
+            # Must have enough waypoints!
+            waypoints_recieved = self.waypoints is not None
+            if not waypoints_recieved:
+                continue
+
+            if (len(self.waypoints) < 3):
+                continue
 
             if self.dbw_enabled and self.twist_cmd is not None and self.current_velocity is not None:
-                #Reset for manual/stop
+                # Reset for manual/stop
                 if self.reset:
                     self.controller.reset()
                     self.reset = False
-                
-                #Get commands from twist controller
-                throttle, brake, steering = self.controller.control(self.twist_cmd, self.current_velocity, t_delta, self.pose, self.waypoints)
+
+                # Get commands from twist controller
+                throttle, brake, steering = self.controller.control(self.twist_cmd, self.current_velocity, t_delta,
+                                                                    self.pose, self.waypoints)
             else:
                 self.reset = True
-		throttle, brake, steering = 0.0, 0.0, 0.0
+                throttle, brake, steering = 0.0, 0.0, 0.0
             self.publish(throttle, brake, steering)
-	    rate.sleep()
+            rate.sleep()
 
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()
@@ -147,10 +150,10 @@ class DBWNode(object):
         self.dbw_enabled = msg.data
 
     def pose_cb(self, msg):
-	self.pose = msg.pose
+        self.pose = msg.pose
 
     def waypoints_cb(self, msg):
-	self.waypoints = msg.waypoints
+        self.waypoints = msg.waypoints
 
 
 if __name__ == '__main__':
